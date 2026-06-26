@@ -11,6 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -22,9 +32,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: cloud
-          endpoint: "knrdev/knr-builder"
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -32,6 +39,5 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          pull: true
           no-cache: true
           tags: knrdev/knr-wan21-ready:v1.0
