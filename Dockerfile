@@ -1,16 +1,18 @@
-FROM nvcr.io/nvidia/pytorch:24.05-py3
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
 
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_HOME=/usr/local/cuda
+ENV MAX_JOBS=4
 
 WORKDIR /workspace
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git git-lfs ffmpeg rclone espeak-ng ninja-build build-essential \
-    wget curl unzip zip \
+    wget curl unzip zip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python -m pip install --upgrade pip setuptools wheel
+RUN python -m pip install --upgrade pip setuptools wheel packaging
 
 RUN python -m pip install \
     diffusers \
@@ -20,7 +22,7 @@ RUN python -m pip install \
     dashscope \
     imageio \
     imageio-ffmpeg \
-    opencv-python \
+    opencv-python-headless \
     edge-tts \
     huggingface_hub \
     pillow \
@@ -28,7 +30,6 @@ RUN python -m pip install \
 
 RUN python -m pip install flash-attn --no-build-isolation
 
-RUN git lfs install
-RUN git clone https://github.com/Wan-Video/Wan2.1.git /workspace/Wan2.1
+RUN git lfs install && git clone --depth 1 https://github.com/Wan-Video/Wan2.1.git /workspace/Wan2.1
 
 CMD ["sleep", "infinity"]
