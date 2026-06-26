@@ -32,4 +32,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          pull: true
+          no-cache: true
           tags: knrdev/knr-wan21-ready:v1.0
