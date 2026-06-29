@@ -1,0 +1,47 @@
+FROM knrdev/knr-wan21-ready:v1.0
+
+# System packages — all needed tools pre-installed
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        rclone espeak-ng ffmpeg git wget unzip curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# All Python packages Wan2.1 + KnR needs — pre-installed
+RUN pip install --no-cache-dir \
+    ftfy einops sentencepiece peft \
+    requests edge-tts "huggingface_hub" \
+    pillow imageio imageio-ffmpeg \
+    opencv-python-headless \
+    transformers accelerate tokenizers easydict \
+    && echo "Core packages OK"
+
+# Wan2.1 requirements (skip flash_attn — needs CUDA at build time)
+RUN grep -v flash_attn /workspace/Wan2.1/requirements.txt \
+    | grep -v "^#" | grep -v "^$" \
+    | xargs pip install --no-cache-dir \
+    && echo "Wan2.1 deps OK"
+
+# KnR scripts pre-baked in (model downloads at first run — 7GB too large for image)
+RUN wget -qO /tmp/k.zip \
+    "https://raw.githubusercontent.com/GetGitFork/knr-wan21-ready-build/main/KnR_COMPLETE_BUNDLE.zip" \
+    && cd /workspace && unzip -qo /tmp/k.zip && rm /tmp/k.zip \
+    && chmod +x /workspace/KnR/runpod/*.sh \
+    && echo "KnR bundle OK"
+
+# New startup: auto-download model if missing, then start service
+RUN cat > /workspace/knr_start.sh << 'STARTEOF'
+#!/bin/bash
+MODEL_DIR=/workspace/KnR/models/Wan2.1-T2V-1.3B
+if [ ! -f "$MODEL_DIR/config.json" ]; then
+  echo "[startup] Downloading Wan2.1 model (~7GB)..."
+  python3 -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='Wan-AI/Wan2.1-T2V-1.3B', local_dir='$MODEL_DIR')"
+fi
+mkdir -p /workspace/knr_runs /workspace/KnR_BACKUPS
+chmod +x /workspace/KnR/runpod/*.sh
+exec bash /workspace/KnR/runpod/run_knr_gpu_service.sh
+STARTEOF
+chmod +x /workspace/knr_start.sh
+
+EXPOSE 7860
+
+CMD ["sleep", "infinity"]
