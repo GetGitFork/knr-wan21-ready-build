@@ -1,5 +1,5 @@
 FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
-LABEL version="2.1" description="KnR complete environment - all deps pre-installed"
+LABEL version="2.2" description="KnR complete environment - all deps pre-installed"
 
 # System tools
 RUN apt-get update -qq && \
