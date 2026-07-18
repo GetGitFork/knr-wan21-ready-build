@@ -1,6 +1,5 @@
 FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
-
-LABEL version="2.0" description="KnR complete environment - all deps pre-installed"
+LABEL version="2.1" description="KnR complete environment - all deps pre-installed"
 
 # System tools
 RUN apt-get update -qq && \
@@ -39,6 +38,11 @@ RUN wget -qO /tmp/k.zip \
     cd /workspace && unzip -qo /tmp/k.zip && rm /tmp/k.zip && \
     chmod +x /workspace/KnR/runpod/*.sh && \
     echo "KnR scripts ready"
+
+# Fix .env: remove CPU offload flags and add ?app=knr to AppScript URL
+RUN sed -i 's/KNR_WAN_EXTRA_ARGS=--offload_model True --t5_cpu/KNR_WAN_EXTRA_ARGS=/' /workspace/KnR/runpod/.env && \
+    sed -i 's|/exec$|/exec?app=knr|' /workspace/KnR/runpod/.env && \
+    echo "Fixed .env"
 
 # Startup: auto-download model + start service
 COPY scripts/knr_start.sh /workspace/knr_start.sh
