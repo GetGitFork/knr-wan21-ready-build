@@ -29,7 +29,7 @@ jobs:
           context: .
           file: ./Dockerfile.v2
           push: true
-          tags: knrdev/knr-wan21-ready:v2.1
+          tags: knrdev/knr-wan21-ready:v2.2
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
