@@ -1,10 +1,8 @@
 #!/bin/bash
 echo "=== KnR v2.2 Startup $(date) ==="
-
 # All credentials come from RunPod template environment variables
 # Set these in: RunPod > My Templates > KnR-v2 > Edit > Environment variables
 # GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET, GDRIVE_TOKEN, GDRIVE_FOLDER_ID
-
 if [ -n "$GDRIVE_TOKEN" ] && [ -n "$GDRIVE_CLIENT_ID" ]; then
     mkdir -p /root/.config/rclone /workspace/KnR/runpod/backups
     python3 -c "
@@ -52,6 +50,11 @@ export KNR_WAN_EXTRA_ARGS=""
 
 mkdir -p /workspace/knr_runs /workspace/KnR_BACKUPS
 chmod +x /workspace/KnR/runpod/*.sh
+
+# Permanent fix for flash-attn AssertionError crash: redirect model.py's
+# direct flash_attention( calls to the SDPA-capable attention() dispatcher.
+echo "[startup] Applying flash-attention call patch to model.py..."
+python3 /workspace/scripts/patch_model_attention_calls.py 2>/dev/null || true
 
 echo "[startup] Starting KnR GPU service on port 7860..."
 exec bash /workspace/KnR/runpod/run_knr_gpu_service.sh
