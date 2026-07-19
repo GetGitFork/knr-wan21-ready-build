@@ -25,7 +25,6 @@ elif [ -f /workspace/KnR/runpod/backups/rclone.conf ]; then
 else
     echo "[startup] WARNING: No rclone config. Paste token manually after startup."
 fi
-
 # Download 14B model if missing (one-time per pod, ~28GB, ~10-15 min)
 MODEL_DIR=/workspace/KnR/models/Wan2.1-T2V-14B
 if [ ! -d "$MODEL_DIR" ] || [ -z "$(ls -A "$MODEL_DIR" 2>/dev/null)" ]; then
@@ -42,19 +41,22 @@ print('[startup] 14B model ready.')
 else
     echo "[startup] 14B model present. Skipping download."
 fi
-
 # Set renderer env vars to use the 14B model
 export KNR_WAN_MODEL_DIR=/workspace/KnR/models/Wan2.1-T2V-14B
 export KNR_WAN_TASK=t2v-14B
 export KNR_WAN_EXTRA_ARGS=""
-
 mkdir -p /workspace/knr_runs /workspace/KnR_BACKUPS
 chmod +x /workspace/KnR/runpod/*.sh
-
 # Permanent fix for flash-attn AssertionError crash: redirect model.py's
 # direct flash_attention( calls to the SDPA-capable attention() dispatcher.
 echo "[startup] Applying flash-attention call patch to model.py..."
-python3 /workspace/scripts/patch_model_attention_calls.py 2>/dev/null || true
-
+for p in /workspace/scripts/patch_model_attention_calls.py \
+         /tmp/patch_model_attention_calls.py \
+         /workspace/KnR/scripts/patch_model_attention_calls.py; do
+    if [ -f "$p" ]; then
+        python3 "$p" 2>/dev/null || true
+        break
+    fi
+done
 echo "[startup] Starting KnR GPU service on port 7860..."
 exec bash /workspace/KnR/runpod/run_knr_gpu_service.sh
