@@ -1,4 +1,4 @@
-name: Build KnR Docker v2.3
+name: Build KnR Docker v2.4
 on:
   workflow_dispatch:
   push:
@@ -18,12 +18,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push v2.3
+      - name: Build and push v2.4
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.v2
           push: true
-          tags: knrdev/knr-wan21-ready:v2.3
+          tags: knrdev/knr-wan21-ready:v2.4
           platforms: linux/amd64
           no-cache: true
