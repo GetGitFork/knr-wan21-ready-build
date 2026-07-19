@@ -1,15 +1,12 @@
 FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
-LABEL version="2.2" description="KnR complete environment - all deps pre-installed"
-
+LABEL version="2.4" description="KnR complete environment - all deps pre-installed"
 # System tools
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         rclone espeak-ng ffmpeg git wget unzip curl \
     && rm -rf /var/lib/apt/lists/*
-
 # Clone Wan2.1 code repo
 RUN git clone --depth 1 https://github.com/Wan-Video/Wan2.1 /workspace/Wan2.1
-
 # All Python packages for KnR + Wan2.1
 RUN pip install --no-cache-dir \
     ftfy einops sentencepiece peft \
@@ -18,35 +15,32 @@ RUN pip install --no-cache-dir \
     pillow imageio imageio-ffmpeg \
     opencv-python-headless \
     easydict
-
 # Wan2.1 requirements (skip flash-attn - patched below)
 RUN grep -v -iE "flash.?attn" /workspace/Wan2.1/requirements.txt | \
     grep -v "^#" | grep -v "^$" > /tmp/wan_reqs.txt && \
     pip install --no-cache-dir -r /tmp/wan_reqs.txt || true
-
 # Patch attention.py to use PyTorch native SDPA (no flash_attn needed)
 COPY scripts/patch_attention.py /tmp/patch_attention.py
 RUN python3 /tmp/patch_attention.py
-
+# Patch model.py to redirect flash_attention( calls to the SDPA-capable
+# attention() dispatcher (fixes AssertionError: FLASH_ATTN_2_AVAILABLE)
+COPY scripts/patch_model_attention_calls.py /workspace/scripts/patch_model_attention_calls.py
+RUN python3 /workspace/scripts/patch_model_attention_calls.py
 # Symlink Wan2.1 repo to expected KnR location
 RUN mkdir -p /workspace/KnR/models && \
     ln -sf /workspace/Wan2.1 /workspace/KnR/models/Wan2.1
-
 # Pre-bake KnR scripts
 RUN wget -qO /tmp/k.zip \
     "https://raw.githubusercontent.com/GetGitFork/knr-wan21-ready-build/main/KnR_COMPLETE_BUNDLE.zip" && \
     cd /workspace && unzip -qo /tmp/k.zip && rm /tmp/k.zip && \
     chmod +x /workspace/KnR/runpod/*.sh && \
     echo "KnR scripts ready"
-
 # Fix .env: remove CPU offload flags and add ?app=knr to AppScript URL
 RUN sed -i 's/KNR_WAN_EXTRA_ARGS=--offload_model True --t5_cpu/KNR_WAN_EXTRA_ARGS=/' /workspace/KnR/runpod/.env && \
     sed -i 's|/exec$|/exec?app=knr|' /workspace/KnR/runpod/.env && \
     echo "Fixed .env"
-
 # Startup: auto-download model + start service
 COPY scripts/knr_start.sh /workspace/knr_start.sh
 RUN chmod +x /workspace/knr_start.sh
-
 EXPOSE 7860
 CMD ["sleep", "infinity"]
